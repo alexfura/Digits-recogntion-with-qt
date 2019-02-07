@@ -1,5 +1,10 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
+#include <armadillo>
+#include "network.h"
+
+
+using namespace arma;
 
 #include <QMainWindow>
 
@@ -14,13 +19,20 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void train();
+    void count();
 
-private slots:
+
+public Q_SLOTS:
     void cellSelected(int nRow, int nCol);
+    void predict();
+    void clear();
 
 private:
     void init_map();
     Ui::MainWindow *ui;
+    Mat<double> digit;
+    network * net;
 
 };
 

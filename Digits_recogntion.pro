@@ -22,20 +22,30 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 CONFIG += c++11
 
+
 SOURCES += \
         main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+    network.cpp
 
 HEADERS += \
-        mainwindow.h
+        mainwindow.h \
+    network.h
 
 FORMS += \
         mainwindow.ui
+
+INCLUDEPATH += /home/alex/armadillo-9.200.6/include
+
+INCLUDEPATH += /usr/lib/x86_64-linux-gnu/hdf5/serial/include
+
+LIBS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial  -lhdf5
+
+LIBS += -llapack -lblas
+
+
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
-
-DISTFILES += \
-    model.py

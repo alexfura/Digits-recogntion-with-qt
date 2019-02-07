@@ -3,6 +3,15 @@
 #include <QAbstractItemView>
 #include <QDebug>
 #include <QMessageBox>
+#include <QTableWidget>
+
+#include <fstream>
+#include <istream>
+#include <ostream>
+#include <vector>
+#include <QString>
+
+using namespace std;
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -13,7 +22,8 @@ MainWindow::MainWindow(QWidget *parent) :
     init_map();
 
     connect(ui->map, SIGNAL( cellEntered (int, int) ), this, SLOT( cellSelected( int, int ) ));
-
+    connect(ui->clearButt, &QPushButton::clicked, this, [this]{this->clear();});
+    digit = zeros(1, 784);
 }
 
 MainWindow::~MainWindow()
@@ -23,16 +33,23 @@ MainWindow::~MainWindow()
 
 
 
-
-
 void MainWindow::init_map()
 {
-    ui->map->setRowCount(8);
-    ui->map->setColumnCount(8);
+    ui->map->setRowCount(28);
+    ui->map->setColumnCount(28);
 
-    ui->map->verticalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    ui->map->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     ui->map->setSelectionMode(QAbstractItemView::NoSelection);
+    ui->map->verticalHeader()->hide();
+    ui->map->horizontalHeader()->hide();
+
+    ui->map->setShowGrid(false);
+
+    ui->map->verticalHeader()->setMaximumSectionSize(this->ui->map->height() / 28);
+    ui->map->horizontalHeader()->setMaximumSectionSize(this->ui->map->width() /28);
+
+    ui->map->verticalHeader()->setMinimumSectionSize(this->ui->map->height() / 28);
+    ui->map->horizontalHeader()->setMinimumSectionSize(this->ui->map->width() /28);
+
 
     for(int row = 0;row < ui->map->rowCount();row++)
     {
@@ -42,11 +59,46 @@ void MainWindow::init_map()
         }
     }
 
+    net = new network(10, 100, 64, 12, 0.01, 0.00001);
+    net->restore();
 }
+
 
 
 void MainWindow::cellSelected(int nRow, int nCol)
 {
-    qDebug() <<nRow<<nCol <<"Row and col";
     this->ui->map->item(nRow, nCol)->setBackgroundColor(Qt::black);
+
+    if(nRow != 27)
+    {
+        this->ui->map->item(nRow+1, nCol)->setBackgroundColor(Qt::black);
+        this->digit.at(0, nCol + (nRow +1) * 28) = 1;
+
+    }
+
+    this->digit.at(0, nCol + nRow * 28) = 1;
+    this->predict();
+}
+
+void MainWindow::predict()
+{
+    int predicted = net->predict(this->digit);
+
+    this->ui->prediction->setNum(predicted);
+}
+
+
+void MainWindow::clear()
+{
+    for(int row = 0;row < ui->map->rowCount();row++)
+    {
+        for(int col = 0;col < ui->map->columnCount();col++)
+        {
+            this->ui->map->item(row, col)->setBackgroundColor(Qt::white);
+        }
+    }
+
+    digit.zeros(1, 784);
+
+    this->ui->prediction->clear();
 }
