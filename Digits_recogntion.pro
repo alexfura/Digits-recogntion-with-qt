@@ -35,11 +35,11 @@ HEADERS += \
 FORMS += \
         mainwindow.ui
 
-INCLUDEPATH += /home/alex/armadillo-9.200.6/include
+INCLUDEPATH += path_to_armadillo_headers/armadillo-9.200.6/include
 
-INCLUDEPATH += /usr/lib/x86_64-linux-gnu/hdf5/serial/include
+INCLUDEPATH += path_to_hdf5lib/hdf5/serial/include
 
-LIBS += -L/usr/lib/x86_64-linux-gnu/hdf5/serial  -lhdf5
+LIBS += -Lpath_to_hdf5lib/hdf5/serial  -lhdf5
 
 LIBS += -llapack -lblas
 
