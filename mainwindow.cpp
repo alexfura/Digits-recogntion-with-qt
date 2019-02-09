@@ -5,10 +5,6 @@
 #include <QMessageBox>
 #include <QTableWidget>
 
-#include <fstream>
-#include <istream>
-#include <ostream>
-#include <vector>
 #include <QString>
 
 using namespace std;
@@ -24,6 +20,17 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->map, SIGNAL( cellEntered (int, int) ), this, SLOT( cellSelected( int, int ) ));
     connect(ui->clearButt, &QPushButton::clicked, this, [this]{this->clear();});
     digit = zeros(1, 784);
+
+    net = new network(784, 100, 10);
+
+    net->load("mnist_train.csv");
+    net->MBGD(12, 12, 0.01, 0, 0.9);
+    net->count_score();
+
+    net->load("mnist_test.csv");
+
+    net->count_score();
+    net->save_results();
 }
 
 MainWindow::~MainWindow()
@@ -58,9 +65,8 @@ void MainWindow::init_map()
             ui->map->setItem(row, col, new QTableWidgetItem(""));
         }
     }
-
-    net = new network(10, 100, 64, 12, 0.01, 0.00001);
-    net->restore();
+    
+    
 }
 
 
@@ -73,9 +79,7 @@ void MainWindow::cellSelected(int nRow, int nCol)
     {
         this->ui->map->item(nRow+1, nCol)->setBackgroundColor(Qt::black);
         this->digit.at(0, nCol + (nRow +1) * 28) = 1;
-
     }
-
     this->digit.at(0, nCol + nRow * 28) = 1;
     this->predict();
 }

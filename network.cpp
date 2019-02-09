@@ -1,15 +1,12 @@
 #include "network.h"
 
 
-network::network(int n_output, int n_hidden, int epoch,
-                 uint batch_size, double eta, double decreasing_cost)
+network::network(uint n_features,uint n_hidden, uint n_output)
 {
-    this->n_output = n_output;
+    // [784, 100, 10]
+    this->n_features = n_features;
     this->n_hidden = n_hidden;
-    this->epochs = epoch;
-    this->batch_size = batch_size;
-    this->eta = eta;
-    this->decreasing_cost = decreasing_cost;
+    this->n_output = n_output;
 
     // fill weights with random
     init_weights();
@@ -20,24 +17,28 @@ void network::load(std::string filename)
 {
     // load unprepared data
 
-    mat Raw = Mat<double>();
-    Raw.load(filename);
+    mat RAW_DATA = Mat<double>();
+    RAW_DATA.load(filename);
+
+    // expects, that y-label is first column
 
     // slice Raw matrix to inputs and labels
 
-    this->inputs = Raw.submat(0, 1, Raw.n_rows-1, Raw.n_cols-1);
-    this->labels = Raw.submat(0, 0, Raw.n_rows-1, 0);
-    this->inputs = this->inputs / 255;
+    this->inputs = RAW_DATA.submat(0, 1, RAW_DATA.n_rows-1, RAW_DATA.n_cols-1);
+    this->labels = RAW_DATA.submat(0, 0, RAW_DATA.n_rows-1, 0);
+
+    // make dataset more suitable for out app
+
     this->inputs.for_each([](mat::elem_type& val){
-        if(val > 0.5)
+        if(val >= 250)
         {
             val = 1;
         }
-        else
-        {
-            val  = 0;
+        else {
+            val = 0;
         }
     });
+    this->inputs /= 255;
     this->labels = prepare_labels(this->labels);
 }
 
@@ -46,10 +47,9 @@ void  network::init_weights()
 {
     arma_rng::set_seed_random();
     // [-1 .... 1]
-    this-> W1 = this->W1.randu(this->n_hidden, 784);
-//    qDebug() <<W1.n_rows <<W1.n_cols;
+    this-> W1 = this->W1.randu(this->n_hidden, this->n_features);
+    // +1 with bias unit
     this->W2 = this->W2.randu(this->n_output, this->n_hidden +1);
-//    qDebug() <<W2.n_rows <<W2.n_cols;
 }
 
 void network::evaluate(Mat<double> x, Mat<double> &z1,
@@ -71,24 +71,18 @@ void network::evaluate(Mat<double> x, Mat<double> &z1,
     // 1x10
 }
 
-
-void network::fit()
-{
-
-}
-
-void network::SGD()
+void network::SGD(uint epochs, double eta)
 {
     Mat<double> s1, s2, z1, z2, a1, a2, g1, g2, z2_der, error;
 
-    for(uint i = 0;i < this->inputs.n_rows;i++)
+    for(uint i = 0;i < epochs;i++)
     {
         this->evaluate(this->inputs.row(i), z1, z2, a1, a2);
 
-        error = a2 - this->labels.row(i);
-        qDebug() <<"Total error: "<<this->error(a2, this->labels.row(i));
+        qDebug() <<"Error: " <<this->error(a2, this->labels.row(i));
+        qDebug() <<"Predicted: " << a2.index_max() << " Actual: " <<this->labels.row(i).index_max();
 
-        // add to z1 bias unit
+        error = a2 - this->labels.row(i);
 
         z2_der = z2.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);});
 
@@ -104,9 +98,8 @@ void network::SGD()
         g1 = s1 * this->inputs.row(i);
 
 
-        this->W1 -= this->eta * g1;
-        this->W2 -= this->eta * g2;
-
+        this->W1 -= eta * g1;
+        this->W2 -= eta * g2;
     }
 }
 
@@ -156,6 +149,7 @@ Mat<double> network::prepare_labels(Mat<double> label)
 }
 
 
+
 double network::error(Mat<double> output, Mat<double> y)
 {
     double diff = accu(output - y);
@@ -163,41 +157,47 @@ double network::error(Mat<double> output, Mat<double> y)
     return pow(diff, 2)/2;
 }
 
-void network::MBGD()
+
+void network::MBGD(int epochs, int batch, double eta,
+                   double decr_cost, double momentum)
 {
-    double rate = 0;
-    Mat<double> z1, a1, z2, a2, g1, g2, x, y, s1, s2;
+    Mat<double> s1, s2, z1, z2, a1, a2, g1, g2, z2_der, error, x, y, v1, v2;
 
-    arma_rng::set_seed_random();
+    v1 = zeros(this->W1.n_rows, this->W1.n_cols);
+    v2 = zeros(this->W2.n_rows, this->W2.n_cols);
 
-    for (int epoch = 0;epoch < this->epochs;epoch++)
+    for(uint i = 0;i < epochs;i++)
     {
-        this->eta /= 1 + this->decreasing_cost * epoch;
-        this->inputs = shuffle(this->inputs);
-
-        qDebug() <<"Epoch #"<<epoch;
-        for(uint i = 0;i < this->inputs.n_rows - this->batch_size;i+= this->batch_size)
+        qDebug() <<"Epoch #" <<i;
+        for (int mini = 0;mini < this->inputs.n_rows - batch;mini += batch)
         {
-            x = this->inputs.submat(i, 0, i+this->batch_size, this->inputs.n_cols-1);
-            y = this->labels.submat(i, 0, i+this->batch_size, this->labels.n_cols-1);
-            evaluate(x, z1, z2, a1, a2);
-            Mat<double> error = a2 - y;
-            Mat<double> z2_der = z2.for_each([this](mat::elem_type& val)
-            {val = this->sigmoid_der(val);});
+            x = this->inputs.submat(mini, 0, mini + batch - 1, this->inputs.n_cols - 1);
+            y = this->labels.submat(mini, 0, mini + batch - 1, this->labels.n_cols - 1);
+
+            this->evaluate(x, z1, z2, a1, a2);
+
+            error = a2 - y;
+
+            z2_der = z2.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);});
+
             s2 = error % z2_der;
 
             add_bias_unit(z1, "column");
 
-            s1 = (this->W2.t() * s2.t()) % z1.for_each([this](mat::elem_type& val)
-            {val = this->sigmoid_der(val);}).t();
+            s1 = (this->W2.t() * error.t()) % z1.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);}).t();
             s1.t();
             s1.reshape(s1.n_rows-1, s1.n_cols);
 
             g2 = s2.t() * a1;
             g1 = s1 * x;
 
-            this->W1 -= this->eta * g1;
-            this->W2 -= this->eta * g2;
+            v1 = momentum * v1 + eta * g1;
+            v2 = momentum * v2 + eta * g2;
+
+            this->W1 -= v1;
+            this->W2 -= v2;
+//            this->W1 -= eta * g1;
+//            this->W2 -= eta * g2;
         }
     }
 }
@@ -209,47 +209,28 @@ int network::predict(Mat<double> x)
     Mat<double> z1, z2, a1, a2;
     this->evaluate(x, z1, z2, a1, a2);
 
-    // a2 - output vector
-
     return  a2.index_max();
 }
 
-void network::test_train(std::string filename)
+void network::count_score()
 {
-    Mat<double> Dt,x, y, z1, z2, a1, a2;
-    Dt.load(filename);
-
-    x = Dt.submat(0, 1, Dt.n_rows-1, Dt.n_cols-1);
-    y = Dt.submat(0, 0, Dt.n_rows-1, 0);
-    x = x / 255;
-
-    x.for_each([](mat::elem_type& val){
-        if(val > 0.5)
-        {
-            val = 1;
-        }
-        else
-        {
-            val  = 0;
-        }
-    });
-
-
-    uint prediction = 0;
+    Mat<double> z1, z2, a1, a2;
 
     double rate = 0;
 
-    for(uint i = 0;i < x.n_rows;i++)
+    for(uint i = 0;i < this->labels.n_rows;i++)
     {
-        this->evaluate(x.row(i), z1, z2, a1, a2);
-        prediction = this->predict(x.row(i));
-
-        if(y.at(i, 0) == prediction)
+        if(this->predict(this->inputs.row(i)) == this->labels.row(i).index_max())
         {
             rate++;
         }
+
+        qDebug() <<this->predict(this->inputs.row(i)) << this->labels.row(i).index_max() <<
+                  " Predicted and actual";
     }
-//    qDebug() <<"!!!!" << rate / y.n_rows <<"!!! - TOTAL %";
+
+    qDebug() <<rate / this->labels.n_rows << " :Total %";
+
 }
 
 
