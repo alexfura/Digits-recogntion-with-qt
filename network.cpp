@@ -30,15 +30,11 @@ void network::load(std::string filename)
     // make dataset more suitable for out app
 
     this->inputs.for_each([](mat::elem_type& val){
-        if(val >= 250)
+        if(val > 0)
         {
             val = 1;
         }
-        else {
-            val = 0;
-        }
     });
-    this->inputs /= 255;
     this->labels = prepare_labels(this->labels);
 }
 
@@ -158,18 +154,21 @@ double network::error(Mat<double> output, Mat<double> y)
 }
 
 
-void network::MBGD(int epochs, int batch, double eta,
+void network::MBGD(uint epochs, uint batch, double eta,
                    double decr_cost, double momentum)
 {
-    Mat<double> s1, s2, z1, z2, a1, a2, g1, g2, z2_der, error, x, y, v1, v2;
+    Mat<double> s1, s2, z1, z2, a1, a2, g1, g2, z2_der, error, x, y, v1, v2, v1_prev, v2_prev;
 
     v1 = zeros(this->W1.n_rows, this->W1.n_cols);
     v2 = zeros(this->W2.n_rows, this->W2.n_cols);
+    v1_prev = zeros(this->W1.n_rows, this->W1.n_cols);
+    v2_prev = zeros(this->W2.n_rows, this->W2.n_cols);
+
 
     for(uint i = 0;i < epochs;i++)
     {
         qDebug() <<"Epoch #" <<i;
-        for (int mini = 0;mini < this->inputs.n_rows - batch;mini += batch)
+        for (uint mini = 0;mini < this->inputs.n_rows - batch;mini += batch)
         {
             x = this->inputs.submat(mini, 0, mini + batch - 1, this->inputs.n_cols - 1);
             y = this->labels.submat(mini, 0, mini + batch - 1, this->labels.n_cols - 1);
@@ -191,13 +190,12 @@ void network::MBGD(int epochs, int batch, double eta,
             g2 = s2.t() * a1;
             g1 = s1 * x;
 
-            v1 = momentum * v1 + eta * g1;
-            v2 = momentum * v2 + eta * g2;
+
+            v1 = momentum * v1 - eta * g1;
+            v2 = momentum * v2 - eta * g2;
 
             this->W1 -= v1;
             this->W2 -= v2;
-//            this->W1 -= eta * g1;
-//            this->W2 -= eta * g2;
         }
     }
 }

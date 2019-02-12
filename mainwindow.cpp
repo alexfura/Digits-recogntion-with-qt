@@ -4,6 +4,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QTableWidget>
+#include <QTimer>
 
 #include <QString>
 
@@ -19,23 +20,19 @@ MainWindow::MainWindow(QWidget *parent) :
 
     connect(ui->map, SIGNAL( cellEntered (int, int) ), this, SLOT( cellSelected( int, int ) ));
     connect(ui->clearButt, &QPushButton::clicked, this, [this]{this->clear();});
+    connect(ui->sample, &QPushButton::clicked, this, [this]{this->vizualize();});
     digit = zeros(1, 784);
 
     net = new network(784, 100, 10);
-
-    net->load("mnist_train.csv");
-    net->MBGD(12, 12, 0.01, 0, 0.9);
-    net->count_score();
-
     net->load("mnist_test.csv");
 
-    net->count_score();
-    net->save_results();
+    net->restore();
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete net;
 }
 
 
@@ -51,11 +48,11 @@ void MainWindow::init_map()
 
     ui->map->setShowGrid(false);
 
-    ui->map->verticalHeader()->setMaximumSectionSize(this->ui->map->height() / 28);
-    ui->map->horizontalHeader()->setMaximumSectionSize(this->ui->map->width() /28);
+    ui->map->verticalHeader()->setMaximumSectionSize(10);
+    ui->map->horizontalHeader()->setMaximumSectionSize(10);
 
-    ui->map->verticalHeader()->setMinimumSectionSize(this->ui->map->height() / 28);
-    ui->map->horizontalHeader()->setMinimumSectionSize(this->ui->map->width() /28);
+    ui->map->verticalHeader()->setMinimumSectionSize(10);
+    ui->map->horizontalHeader()->setMinimumSectionSize(10);
 
 
     for(int row = 0;row < ui->map->rowCount();row++)
@@ -65,10 +62,7 @@ void MainWindow::init_map()
             ui->map->setItem(row, col, new QTableWidgetItem(""));
         }
     }
-    
-    
 }
-
 
 
 void MainWindow::cellSelected(int nRow, int nCol)
@@ -78,10 +72,25 @@ void MainWindow::cellSelected(int nRow, int nCol)
     if(nRow != 27)
     {
         this->ui->map->item(nRow+1, nCol)->setBackgroundColor(Qt::black);
-        this->digit.at(0, nCol + (nRow +1) * 28) = 1;
+        this->digit.at(0, nCol + (nRow + 1) * 28) = 1;
     }
-    this->digit.at(0, nCol + nRow * 28) = 1;
+    if(nRow != 0)
+    {
+        this->ui->map->item(nRow - 1, nCol)->setBackgroundColor(Qt::black);
+        this->digit.at(0, nCol + (nRow - 1) * 28) = 1;
+    }
+    if(nCol != 0)
+    {
+        this->ui->map->item(nRow, nCol - 1)->setBackgroundColor(Qt::black);
+        this->digit.at(0, nCol - 1 + nRow * 28) = 1;
+    }
+    if(nCol != 27)
+    {
+        this->ui->map->item(nRow, nCol + 1)->setBackgroundColor(Qt::black);
+        this->digit.at(0, nCol + 1 + nRow * 28) = 1;
+    }
     this->predict();
+    this->digit.at(0, nCol + nRow * 28) = 1;
 }
 
 void MainWindow::predict()
@@ -105,4 +114,26 @@ void MainWindow::clear()
     digit.zeros(1, 784);
 
     this->ui->prediction->clear();
+}
+
+
+void MainWindow::vizualize()
+{
+
+    this->clear();
+    arma_rng::set_seed_random();
+    int row = 0;
+    uint sample = rand() % 10000;
+
+    for(uint j = 0;j < this->net->inputs.n_cols;j++)
+    {
+        if(this->net->inputs.at(sample, j) > 0)
+        {
+            this->ui->map->item(row, j % 28)->setBackgroundColor(Qt::blue);
+        }
+        if(j % 28 == 0 && j)
+        {
+            row++;
+        }
+    }
 }
