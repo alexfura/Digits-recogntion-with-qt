@@ -10,7 +10,6 @@ network::network(uint n_features,uint n_hidden, uint n_output)
 
     // fill weights with random
     init_weights();
-    // encode labels
 }
 
 void network::load(std::string filename)
@@ -23,6 +22,7 @@ void network::load(std::string filename)
     // expects, that y-label is first column
 
     // slice Raw matrix to inputs and labels
+    // supposed that zero column in raw data is labels
 
     this->inputs = RAW_DATA.submat(0, 1, RAW_DATA.n_rows-1, RAW_DATA.n_cols-1);
     this->labels = RAW_DATA.submat(0, 0, RAW_DATA.n_rows-1, 0);
@@ -35,6 +35,7 @@ void network::load(std::string filename)
             val = 1;
         }
     });
+    // encode labels
     this->labels = prepare_labels(this->labels);
 }
 
@@ -78,20 +79,7 @@ void network::SGD(uint epochs, double eta)
         qDebug() <<"Error: " <<this->error(a2, this->labels.row(i));
         qDebug() <<"Predicted: " << a2.index_max() << " Actual: " <<this->labels.row(i).index_max();
 
-        error = a2 - this->labels.row(i);
-
-        z2_der = z2.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);});
-
-        s2 = error % z2_der;
-
-        add_bias_unit(z1, "column");
-
-        s1 = (this->W2.t() * error.t()) % z1.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);}).t();
-        s1.t();
-        s1.reshape(s1.n_rows-1, s1.n_cols);
-
-        g2 = s2.t() * a1;
-        g1 = s1 * this->inputs.row(i);
+        this->backprop(g1, g2, this->labels.row(i), this->inputs.row(i));
 
 
         this->W1 -= eta * g1;
@@ -159,11 +147,9 @@ void network::MBGD(uint epochs, uint batch, double eta,
 {
     Mat<double> s1, s2, z1, z2, a1, a2, g1, g2, z2_der, error, x, y, v1, v2, v1_prev, v2_prev;
 
+    // using momentum for optimisation
     v1 = zeros(this->W1.n_rows, this->W1.n_cols);
     v2 = zeros(this->W2.n_rows, this->W2.n_cols);
-    v1_prev = zeros(this->W1.n_rows, this->W1.n_cols);
-    v2_prev = zeros(this->W2.n_rows, this->W2.n_cols);
-
 
     for(uint i = 0;i < epochs;i++)
     {
@@ -175,21 +161,7 @@ void network::MBGD(uint epochs, uint batch, double eta,
 
             this->evaluate(x, z1, z2, a1, a2);
 
-            error = a2 - y;
-
-            z2_der = z2.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);});
-
-            s2 = error % z2_der;
-
-            add_bias_unit(z1, "column");
-
-            s1 = (this->W2.t() * error.t()) % z1.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);}).t();
-            s1.t();
-            s1.reshape(s1.n_rows-1, s1.n_cols);
-
-            g2 = s2.t() * a1;
-            g1 = s1 * x;
-
+            this->backprop(g1, g2, y, x);
 
             v1 = momentum * v1 - eta * g1;
             v2 = momentum * v2 - eta * g2;
@@ -243,6 +215,34 @@ void network::restore()
     this->W1.load(hdf5_name("w1.h5"));
     this->W2.load(hdf5_name("w2.h5"));
 }
+
+void network::backprop(Mat<double> &g1, Mat<double> &g2, Mat<double> y, Mat<double> x)
+{
+
+    // backpropagation vectorized algo
+
+    Mat<double> a1, a2, z1, z2, error, z2_der, s2, s1;
+
+    this->evaluate(x, z1, z2, a1, a2);
+
+    error = a2 - y;
+
+    z2_der = z2.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);});
+
+    s2 = error % z2_der;
+
+    add_bias_unit(z1, "column");
+
+    s1 = (this->W2.t() * error.t()) % z1.for_each([this](mat::elem_type& val){val = this->sigmoid_der(val);}).t();
+    s1.t();
+    s1.reshape(s1.n_rows-1, s1.n_cols);
+
+    g2 = s2.t() * a1;
+    g1 = s1 * x;
+}
+
+
+
 
 
 

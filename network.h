@@ -22,10 +22,11 @@ public:
     int predict(Mat<double> x);
     void count_score();
     void SGD(uint epochs, double eta);
-    void MBGD(int epochs, int batch, double eta,
+    void MBGD(uint epochs, uint batch, double eta,
               double decr_cost, double momentum);
 
-
+    Mat<double> inputs;
+    Mat<double> labels;
 
 
 private:
@@ -34,8 +35,7 @@ private:
     uint n_output;
 
 
-    Mat<double> inputs;
-    Mat<double> labels;
+
     Mat<double> prepare_labels(Mat<double> label);
 
     void init_weights();
@@ -46,7 +46,7 @@ private:
     double sigmoid_der(double X);
 
     void evaluate(Mat<double> x, Mat<double> &z1, Mat<double> &z2, Mat<double> &a1, Mat<double> &a2);
-    void backprop(Mat<double> &g1, Mat<double> &g2, Mat<double> z1, Mat<double> z2, Mat<double> a1, Mat<double> a2, Mat<double> o, Mat<double> x);
+    void backprop(Mat<double> &g1, Mat<double> &g2, Mat<double> y, Mat<double> x);
     void add_bias_unit(Mat<double> &layer, std::string method);
     double error(Mat<double> output, Mat<double> y);
     void split_array();

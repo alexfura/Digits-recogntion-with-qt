@@ -1,10 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include <QAbstractItemView>
 #include <QDebug>
-#include <QMessageBox>
 #include <QTableWidget>
-#include <QTimer>
 
 #include <QString>
 
@@ -24,9 +21,15 @@ MainWindow::MainWindow(QWidget *parent) :
     digit = zeros(1, 784);
 
     net = new network(784, 100, 10);
-    net->load("mnist_test.csv");
+    net->load("mnist_train.csv");
 
-    net->restore();
+    net->MBGD(10, 12, 0.01, 0, 0.9);
+
+    net->load("mnist_test.csv");
+    net->count_score();
+
+    net->save_results();
+
 }
 
 MainWindow::~MainWindow()
@@ -47,12 +50,12 @@ void MainWindow::init_map()
     ui->map->horizontalHeader()->hide();
 
     ui->map->setShowGrid(false);
-
     ui->map->verticalHeader()->setMaximumSectionSize(10);
     ui->map->horizontalHeader()->setMaximumSectionSize(10);
 
     ui->map->verticalHeader()->setMinimumSectionSize(10);
     ui->map->horizontalHeader()->setMinimumSectionSize(10);
+
 
 
     for(int row = 0;row < ui->map->rowCount();row++)
@@ -137,3 +140,6 @@ void MainWindow::vizualize()
         }
     }
 }
+
+
+
