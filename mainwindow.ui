@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>685</width>
-    <height>582</height>
+    <width>409</width>
+    <height>350</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,8 +22,8 @@
      <rect>
       <x>8</x>
       <y>8</y>
-      <width>581</width>
-      <height>491</height>
+      <width>300</width>
+      <height>300</height>
      </rect>
     </property>
     <property name="styleSheet">
@@ -45,7 +45,7 @@
    <widget class="QPushButton" name="clearButt">
     <property name="geometry">
      <rect>
-      <x>600</x>
+      <x>320</x>
       <y>10</y>
       <width>75</width>
       <height>23</height>
@@ -58,7 +58,7 @@
    <widget class="QLabel" name="prediction">
     <property name="geometry">
      <rect>
-      <x>600</x>
+      <x>320</x>
       <y>40</y>
       <width>71</width>
       <height>91</height>
@@ -76,13 +76,26 @@ font: 75 64pt &quot;Courier 10 Pitch&quot;;</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
+   <widget class="QPushButton" name="sample">
+    <property name="geometry">
+     <rect>
+      <x>320</x>
+      <y>140</y>
+      <width>71</width>
+      <height>23</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Sample</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>685</width>
+     <width>409</width>
      <height>20</height>
     </rect>
    </property>
