@@ -166,8 +166,8 @@ void network::MBGD(uint epochs, uint batch, double eta,
             v1 = momentum * v1 - eta * g1;
             v2 = momentum * v2 - eta * g2;
 
-            this->W1 -= v1;
-            this->W2 -= v2;
+            this->W1 += v1;
+            this->W2 += v2;
         }
     }
 }
